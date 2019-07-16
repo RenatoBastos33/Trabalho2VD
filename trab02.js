@@ -7,70 +7,27 @@ myApp.xScale = undefined;
 myApp.yScale = undefined;
 myApp.xAxis = undefined;
 myApp.yAxis = undefined;
-myApp.brush = undefined;
-myApp.DATA = 0;
-myApp.DOT = 1;
-
-myApp.createCirclesData = function (n, label) {
-    let circles = [];
-    for (let i = 0; i < label.length; i++) {
-        for (let id = 0; id < n; id++) {
-            let x = (Math.random() * 30) - 10;
-            let y = Math.random() * 10;
-            let c = {'cx': x, 'cy': y, 'r': 3.5, 'label': label[i]};
-            circles.push(c);
-        }
-    }
-
-
-    return circles;
-}
-
-myApp.createRecData = function (n, label) {
-    let recs = [];
-    for (let i = 0; i < label.length; i++) {
-        for (let id = 1; id < n; id++) {
-            let y = Math.random() * 10;
-            let r = {'cx': id, 'cy': y, 'label': label[i]};
-            recs.push(r)
-        }
-    }
-    return recs
-}
-
-myApp.createLinesData = function (n, label) {
-    let lines = [];
-    for (let i = 0; i < label.length; i++) {
-        let line = []
-        for (let id = 1; id < n; id++) {
-            let y = Math.random() * 10;
-            let r = {'cx': id, 'cy': y, 'label': label[i]};
-            line.push(r)
-        }
-        lines.push(line)
-    }
-    console.log(lines)
-    return lines
-
-}
 
 
 
+//Escala de cor do mapa
 myApp.makeScaleColor = function (data) {
-    console.log(data)
+    //console.log(data)
     let min = data[1].qnt
     let max = data[1].qnt
     data.forEach(function (d) {
         if (d.qnt > max) {
             max = d.qnt
         }
-        else if (d.qnt < min) {
+        else if ((d.qnt < min) && (d.qnt != 0)) {
             min = d.qnt
         }
     })
+    //console.log('min',min,'max',max)
     return d3.scaleLinear().domain([min, max]).range(["yellow", "red"])
 }
 
+//
 myApp.appendSvg = function (div) {
     let node = d3.select(div).append('svg')
         .attr('width', myApp.cw + myApp.margins.left + myApp.margins.right)
@@ -79,27 +36,31 @@ myApp.appendSvg = function (div) {
     return node;
 }
 
-myApp.appendMap = function (svg,svgLine) {
+myApp.appendMap = function (svg, chtLine) {
     var path = d3.geoPath()
     let names = [];
-    let eventsByYear=[]
+    let eventsByYear = []
     d3.tsv("us-state-names.tsv", function (tsv) {
         // extract just the names and Ids
-
         tsv.forEach(function (d, i) {
             names[parseInt(d.id)] = {"name": d.name, "qnt": 0};
         });
-        for(let i=2013;i<2019;i++){
-            for(let j=1;j<13;j++){
-                let stringData=i + "-" + j
-                let novaData= {
-                    year:stringData,
-                    qnt:0
+        for (let i = 2013; i < 2019; i++) {
+            for (let j = 1; j < 13; j++) {
+                let stringData
+                if (j < 10) {
+                    stringData = i + "-0" + j
+                }
+                else {
+                    stringData = i + "-" + j
+                }
+                let novaData = {
+                    year: stringData,
+                    qnt: 0
                 }
                 eventsByYear.push(novaData)
             }
         }
-
         d3.csv("gun-violence-data.csv", function (err, data) {
             data.forEach(function (d) {
                 names.forEach(function (i) {
@@ -109,22 +70,21 @@ myApp.appendMap = function (svg,svgLine) {
 
                 })
                 eventsByYear.forEach(function (j) {
-                    console.log(d.date.split("-")[0]+"-"+d.date.split("-")[1])
-                    console.log(j)
-                    if((d.date.split("-")[0]+"-"+d.date.split("-")[1])===j.year){
-                        console.log("dData",d.date.split("-")[0]+"-"+d.date.split("-")[1])
-                        console.log("jData",j.year)
-                        j.qnt+=1
+                    if ((d.date.split("-")[0] + "-" + d.date.split("-")[1]) === j.year) {
+                        j.qnt += 1
                     }
                 })
+
             })
-            console.log("eventsByYear",eventsByYear)
+            //console.log("eventsByYear",eventsByYear)
             d3.json("https://d3js.org/us-10m.v1.json", function (error, us) {
                 let myColor = myApp.makeScaleColor(names)
                 var states = topojson.feature(us, us.objects.states).features
                 if (error) throw error;
                 // console.log(path)
-                console.log(states)
+                //console.log(states)
+
+                //Criando e pintando os estados
                 svg.append("g")
                     .attr("class", "states")
                     .selectAll("path")
@@ -132,18 +92,31 @@ myApp.appendMap = function (svg,svgLine) {
                     .enter().append("path")
                     .attr("d", path)
                     .style('fill', function (d) {
-                            console.log("d", d)
-                            console.log("color", names[parseInt(d.id)])
+                            //console.log("d", d)
+                            //console.log("color", names[parseInt(d.id)])
                             return myColor(names[parseInt(d.id)].qnt)
                         }
                     )
+                    .on("mouseover", function(d) {
+                        console.log(d)
+                        var xPosition = d3.mouse(this)[0] - 5;
+                        var yPosition = d3.mouse(this)[1] - 5;
+                        tooltip.style("display", null).transition().duration(1000)
+                        tooltip.attr("transform", "translate(" + xPosition + "," + yPosition + ")").transition().duration(1000);
+                        tooltip.select("text").text("Incidentes: "+names[parseInt(d.id)].qnt);
+
+                    })
+                     //.on("mouseout", function() { tooltip.style("display", "none").transition().duration(1000); })   // Fica piscando sem parar!!
+
+                //desenhando as fronteiras de cada estado
                 svg.append("path")
                     .attr("class", "state-borders")
                     .attr("d", path(topojson.mesh(us, us.objects.states, function (a, b) {
                         // console.log('a:',a)
                         // console.log('b:',b)
                         return a !== b;
-                    })));
+                    })))
+
                 svg.append("g")
                     .attr("class", "states-names")
                     .selectAll("text")
@@ -151,7 +124,7 @@ myApp.appendMap = function (svg,svgLine) {
                     .enter()
                     .append("svg:text")
                     .text(function (d) {
-                        console.log(d, names[parseInt(d.id)].name)
+                        //(d, names[parseInt(d.id)].name)
                         return names[parseInt(d.id)].name;
                     })
                     .attr("x", function (d) {
@@ -161,12 +134,86 @@ myApp.appendMap = function (svg,svgLine) {
                         return path.centroid(d)[1];
                     })
                     .attr("text-anchor", "middle")
-                    .attr('fill', 'black');
-            })
+                    .attr('fill', 'black')
 
+                myApp.createAxes(chtLine)
+
+                const lines = d3.line()
+                    .x(d=> myApp.xScale(new Date(parseInt(d.year.split("-")[0]), parseInt(d.year.split("-")[1]), 0)))
+                    .y(d=> myApp.yScale(d.qnt));
+                console.log(eventsByYear)
+
+
+                chtLine.selectAll("path")
+                    .data([eventsByYear])
+                    .enter()
+                    .append('path')
+                    .attr('class', 'line')
+                    .attr('fill', 'none')
+                    .attr('stroke', 'black')
+                    .attr('stroke-width', '1')
+                    .attr('d',lines)
+                    .attr('d', function (d) {
+                        console.log(d)
+                        console.log("lineD", myApp.xScale(new Date(parseInt(d.year.split("-")[0]), parseInt(d.year.split("-")[1]), 0)))
+                        console.log("myscaleY", myApp.yScale(d.qnt))
+                        // os pontos tão chegando corretamento, mas da erro na criação da linha???
+                        // return d3.line().x(function (d) {
+                        //     console.log("chegou no x?")
+                        //     //console.log("d",d)
+                        //     //let data=new Date(parseInt(d.year.split("-")[0]),parseInt(d.year.split("-")[1]),0)
+                        //     //console.log("DataD",data)
+                        //     return myApp.xScale(new Date(parseInt(d.year.split("-")[0]), parseInt(d.year.split("-")[1]), 0));
+                        // })
+                        //     .y(function (d) {
+                        //         return myApp.yScale(d.qnt);
+                        //     })
+
+                    })
+                //Criando tooltip pro estado mostrar a quantidade de incidentes
+                var tooltip = svg.append("g")
+                    .attr("class", "tooltip")
+                    .style("display", "none");
+
+                tooltip.append("rect")
+                    .attr("width", 120)
+                    .attr("height", 20)
+                    .attr("fill", "white")
+                    .style("opacity", 0.8);
+
+                tooltip.append("text")
+                    .attr("x", 60)
+                    .attr("dy", "1.2em")
+                    .style("text-anchor", "middle")
+                    .attr("font-size", "12px")
+                    .attr("font-weight", "bold");
+
+                //criando a legenda do mapa
+                var legend = svg.selectAll('legend')
+                    .data(myColor.domain())
+                    .enter().append('g')
+                    .attr('class', 'legend')
+                    .attr('transform', function (d, i) {
+                        return 'translate(0,' + i * 20 + ')';
+                    });
+                legend.append('rect')
+                    .attr('x', myApp.cw)
+                    .attr('width', 18)
+                    .attr('height', 18)
+                    .style('fill', myColor);
+                legend.append('text')
+                    .attr('x', myApp.cw - 6)
+                    .attr('y', 9)
+                    .attr('dy', '.35em')
+                    .style('text-anchor', 'end')
+                    .text(function (d) {
+                        return d;
+                    });
+            })
         })
     })
 }
+//append do chat
 myApp.appendChartGroup = function (svg) {
     let chart = svg.append('g')
         .attr('width', myApp.cw)
@@ -174,22 +221,16 @@ myApp.appendChartGroup = function (svg) {
         .attr('transform', 'translate(' + myApp.margins.left + ',' + myApp.margins.top + ')');
     return chart;
 }
-myApp.createAxes = function (svg, type = myApp.DOT) {
-    if (type === myApp.DATA) {
-        myApp.xScale = d3.scaleTime()
-            .domain([new Date(2000, 0, 0), new Date(2012, 0, 0)])
-            .rangeRound([0, myApp.cw]);
+//criando os eixos
+myApp.createAxes = function (svg) {
 
-    } else {
-        myApp.xScale = d3.scaleLinear().domain([0, 600]).range([0, myApp.cw]);
-    }
-    myApp.yScale = d3.scaleLinear().domain([10, 0]).range([0, 250]);
-
-
+    myApp.xScale = d3.scaleTime()
+        .domain([new Date(2013, 0, 0), new Date(2019, 0, 0)])
+        .rangeRound([0, myApp.cw]);
+    myApp.yScale = d3.scaleLinear().domain([20000, 0]).range([0, 300]);
     let xAxisGroup = svg.append('g')
         .attr('class', 'xAxis')
-        .attr('transform', 'translate(' + myApp.margins.left + ',' + (250 + myApp.margins.top) + ')');
-
+        .attr('transform', 'translate(' + myApp.margins.left + ',' + (300 + myApp.margins.top) + ')');
     let yAxisGroup = svg.append('g')
         .attr('class', 'yAxis')
         .attr('transform', 'translate(' + myApp.margins.left + ',' + myApp.margins.top + ')');
@@ -201,23 +242,12 @@ myApp.createAxes = function (svg, type = myApp.DOT) {
 }
 
 
-// myApp.appendMap=function(div){
-//     var projection = d3.geo.albersUsa()
-//         .translate([width/2, height/2])    // translate to center of screen
-//         .scale([1000]);          // scale things down so see entire US
-//     var path = d3.geoPath()               // path generator that will convert GeoJSON to SVG paths
-//         .projection(projection);  // tell path generator to use albersUsa projection
-//
-//     console.log(path)
-// }
-
-
 myApp.run = function () {
     let svgMap = myApp.appendSvg("#mainDivTrab02");
     let svgLine = myApp.appendSvg("#secondDivTrab02");
-    let usaMap = myApp.appendMap(svgMap);
+
     let chtLine = myApp.appendChartGroup(svgLine);
-    myApp.createAxes(svgLine);
+    let usaMap = myApp.appendMap(svgMap, chtLine);
     // myApp.appendMap(usaMap)
 
 }
