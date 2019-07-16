@@ -98,7 +98,7 @@ myApp.appendMap = function (svg, chtLine) {
                         }
                     )
                     .on("mouseover", function(d) {
-                        console.log(d)
+                        //console.log(d)
                         var xPosition = d3.mouse(this)[0] - 5;
                         var yPosition = d3.mouse(this)[1] - 5;
                         tooltip.style("display", null).transition().duration(1000)
@@ -141,7 +141,8 @@ myApp.appendMap = function (svg, chtLine) {
                 const lines = d3.line()
                     .x(d=> myApp.xScale(new Date(parseInt(d.year.split("-")[0]), parseInt(d.year.split("-")[1]), 0)))
                     .y(d=> myApp.yScale(d.qnt));
-                console.log(eventsByYear)
+                console.log("Names",names)
+                console.log("EventsByYear",eventsByYear)
 
 
                 chtLine.selectAll("path")
@@ -152,22 +153,22 @@ myApp.appendMap = function (svg, chtLine) {
                     .attr('fill', 'none')
                     .attr('stroke', 'black')
                     .attr('stroke-width', '1')
-                    .attr('d',lines)
+                    //.attr('d',lines)
                     .attr('d', function (d) {
                         console.log(d)
                         console.log("lineD", myApp.xScale(new Date(parseInt(d.year.split("-")[0]), parseInt(d.year.split("-")[1]), 0)))
                         console.log("myscaleY", myApp.yScale(d.qnt))
-                        // os pontos tão chegando corretamento, mas da erro na criação da linha???
-                        // return d3.line().x(function (d) {
-                        //     console.log("chegou no x?")
-                        //     //console.log("d",d)
-                        //     //let data=new Date(parseInt(d.year.split("-")[0]),parseInt(d.year.split("-")[1]),0)
-                        //     //console.log("DataD",data)
-                        //     return myApp.xScale(new Date(parseInt(d.year.split("-")[0]), parseInt(d.year.split("-")[1]), 0));
-                        // })
-                        //     .y(function (d) {
-                        //         return myApp.yScale(d.qnt);
-                        //     })
+                        //os pontos tão chegando corretamento, mas da erro na criação da linha???
+                        return d3.line().x(function (d) {
+                            console.log("chegou no x?")
+                            //console.log("d",d)
+                            //let data=new Date(parseInt(d.year.split("-")[0]),parseInt(d.year.split("-")[1]),0)
+                            //console.log("DataD",data)
+                            return myApp.xScale(new Date(parseInt(d.year.split("-")[0]), parseInt(d.year.split("-")[1]), 0));
+                        })
+                            .y(function (d) {
+                                return myApp.yScale(d.qnt);
+                            })
 
                     })
                 //Criando tooltip pro estado mostrar a quantidade de incidentes
